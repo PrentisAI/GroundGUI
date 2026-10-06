@@ -1,0 +1,182 @@
+{
+  "video_desktop_icon__part1": {
+    "root": "${DATA_ROOT}/video/part1/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_icon__part1.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_icon__part1",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_icon__part2": {
+    "root": "${DATA_ROOT}/video/part2/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_icon__part2.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_icon__part2",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_icon__part3": {
+    "root": "${DATA_ROOT}/video/part3/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_icon__part3.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_icon__part3",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_icon__part4": {
+    "root": "${DATA_ROOT}/video/part4/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_icon__part4.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_icon__part4",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_web_icon__part1": {
+    "root": "${DATA_ROOT}/video/part1/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_web_icon__part1.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "video_web_icon__part1",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_web_icon__part2": {
+    "root": "${DATA_ROOT}/video/part2/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_web_icon__part2.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "video_web_icon__part2",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_web_icon__part3": {
+    "root": "${DATA_ROOT}/video/part3/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_web_icon__part3.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "video_web_icon__part3",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_web_icon__part4": {
+    "root": "${DATA_ROOT}/video/part4/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_web_icon__part4.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "video_web_icon__part4",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_text__part1": {
+    "root": "${DATA_ROOT}/video/part1/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_text__part1.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_text__part1",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_text__part2": {
+    "root": "${DATA_ROOT}/video/part2/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_text__part2.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_text__part2",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_text__part3": {
+    "root": "${DATA_ROOT}/video/part3/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_text__part3.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_text__part3",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "video_desktop_text__part4": {
+    "root": "${DATA_ROOT}/video/part4/frames",
+    "annotation": "${DATA_ROOT}/annotations/sft/video_desktop_text__part4.jsonl",
+    "conv_style": "internvl2_5_desktop_grounding_v1",
+    "task": "video_desktop_text__part4",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "web_icon": {
+    "root": "${DATA_ROOT}/web/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/web_icon.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "web_icon",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "ubuntu_icon": {
+    "root": "${DATA_ROOT}/ubuntu/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/ubuntu_icon.jsonl",
+    "conv_style": "internvl2_5_ubuntu_grounding_v1",
+    "task": "ubuntu_icon",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "android_icon": {
+    "root": "${DATA_ROOT}/android/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/android_icon.jsonl",
+    "conv_style": "internvl2_5_mobile_grounding_v1",
+    "task": "android_icon",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "ubuntu_text": {
+    "root": "${DATA_ROOT}/ubuntu/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/ubuntu_text.jsonl",
+    "conv_style": "internvl2_5_ubuntu_grounding_v1",
+    "task": "ubuntu_text",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "web_text": {
+    "root": "${DATA_ROOT}/web/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/web_text.jsonl",
+    "conv_style": "internvl2_5_web_grounding_v1",
+    "task": "web_text",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "android_text": {
+    "root": "${DATA_ROOT}/android/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/android_text.jsonl",
+    "conv_style": "internvl2_5_mobile_grounding_v1",
+    "task": "android_text",
+    "repeat_time": 1.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "ubuntu_spatial": {
+    "root": "${DATA_ROOT}/ubuntu/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/ubuntu_spatial.jsonl",
+    "conv_style": "internvl2_5_ubuntu_grounding_v1",
+    "task": "ubuntu_spatial",
+    "repeat_time": 2.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  },
+  "android_spatial": {
+    "root": "${DATA_ROOT}/android/images",
+    "annotation": "${DATA_ROOT}/annotations/sft/android_spatial.jsonl",
+    "conv_style": "internvl2_5_mobile_grounding_v1",
+    "task": "android_spatial",
+    "repeat_time": 2.0,
+    "split_anno_by_rank": true,
+    "data_augment": false
+  }
+}

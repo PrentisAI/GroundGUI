@@ -1,0 +1,174 @@
+GUI Grounding: SFT -> RL -> Refusal SFT -> Evaluation
+Copyright 2026 the contributors to this repository.
+
+This repository is licensed under the Apache License, Version 2.0 (see LICENSE),
+except where noted below. It contains code derived from, and text reproduced
+from, the third-party projects listed here. Their original copyright headers are
+retained in the source files. Files marked "modified" were changed by us;
+files marked "added" are new and are not part of the corresponding upstream.
+
+
+================================================================================
+1. sft/
+================================================================================
+
+Derived from ScaleCUA
+  https://github.com/OpenGVLab/ScaleCUA                    Apache-2.0
+which in turn is derived from the Qwen2.5-VL fine-tuning code
+  https://github.com/QwenLM/Qwen2.5-VL (now QwenLM/Qwen3-VL) Apache-2.0
+
+sft/qwenvl/train/train_qwen.py is adapted from FastChat
+  https://github.com/lm-sys/FastChat                       Apache-2.0
+  (original copyright notice retained at the top of the file)
+
+sft/qwenvl/data/conversation.py (chat templates) is taken from ScaleCUA's
+agent-sft/internvl_chat/internvl/conversation.py, which comes from InternVL
+  https://github.com/OpenGVLab/InternVL                    MIT
+  Copyright (c) 2023 OpenGVLab  -- license text reproduced below.
+and was originally derived from FastChat (Apache-2.0). We added templates to it.
+
+Relative to ScaleCUA agent-sft/, these files are modified:
+  sft/qwenvl/data/conversation.py  (from internvl_chat/internvl/)
+and relative to ScaleCUA agent-sft/qwen-vl-finetune/, these:
+  sft/qwenvl/data/data_qwen.py  sft/qwenvl/data/rope2d.py
+  sft/qwenvl/train/argument.py  sft/qwenvl/train/train_qwen.py  sft/qwenvl/train/trainer.py
+  sft/scripts/zero3.json  sft/requirements.txt
+and these are added:
+  sft/scripts/sft_local.sh  sft/scripts/sft_8b_slurm.sbatch
+  sft/recipes/  sft/configs/  sft/requirements.lock.txt
+
+
+================================================================================
+2. rl/
+================================================================================
+
+Derived from GUI-SD ("Learn where to Click from Yourself: On-Policy
+Self-Distillation for GUI Grounding", Zhang et al., arXiv:2605.00642),
+which is built on ms-swift
+  https://github.com/modelscope/ms-swift                   Apache-2.0
+  Copyright (c) ModelScope Contributors. / Copyright (c) Alibaba, Inc. and its affiliates.
+
+Some ms-swift files carry further upstream notices, retained as-is
+(Copyright 2023-present the HuggingFace Inc. team; Copyright (c) Microsoft
+Corporation; Copyright 2023 Rohan Taori, Ishaan Gulrajani, Tianyi Zhang,
+Yann Dubois, Xuechen Li). All are Apache-2.0 licensed.
+
+Forked from GUI-SD-code at commit e029ab58dbc1240efd16ebcfaf075947f515a5f8
+  https://github.com/zhangyan-ucas/GUI-SD-code
+
+Relative to that commit, these files are modified:
+  rl/swift/arguments/rlhf_args.py
+  rl/swift/cus_rewards/bbox_reward.py
+  rl/swift/cus_rewards/g2_reward.py
+  rl/swift/cus_rewards/ground_reward.py
+  rl/swift/custom_utils/ground_func.py
+  rl/swift/metrics/mmbench_metric.py
+  rl/swift/metrics/osworldg_metric.py
+  rl/swift/metrics/screenspotpro_metric.py
+  rl/swift/metrics/screenspotv2_metric.py
+  rl/swift/metrics/total_metric.py
+  rl/swift/metrics/uivision_metric.py
+  rl/swift/pipelines/infer/rollout.py
+  rl/swift/pipelines/train/rlhf.py
+  rl/swift/rlhf_trainers/__init__.py
+  rl/swift/rlhf_trainers/arguments.py
+  rl/swift/rlhf_trainers/cpo_trainer.py
+  rl/swift/rlhf_trainers/gkd_trainer.py
+  rl/swift/rlhf_trainers/grpo_trainer.py
+  rl/swift/rlhf_trainers/opsd_trainer.py
+  rl/swift/rlhf_trainers/orpo_trainer.py
+  rl/swift/rlhf_trainers/ppo_trainer.py
+  rl/swift/rlhf_trainers/reward_trainer.py
+  rl/swift/rlhf_trainers/utils.py
+  rl/swift/rlhf_trainers/vllm_client.py
+  rl/swift/trainers/arguments.py
+  rl/swift/trainers/trainer_factory.py
+and these are added:
+  rl/Grounding_scripts/            (all files)
+  rl/swift/rlhf_trainers/opsd_grpo_trainer.py
+  rl/swift/rlhf_trainers/ttrt_trainer.py
+  rl/requirements.lock.txt
+All other files under rl/ are identical to that commit.
+
+
+================================================================================
+3. eval/
+================================================================================
+
+Derived from the evaluation code of GroundCUA
+  https://github.com/ServiceNow/GroundCUA                  Apache-2.0
+  (license as declared in the upstream pyproject.toml)
+
+Relative to GroundCUA eval/, these files are modified:
+  eval/data.py  eval/eval.py  eval/prompts.py
+  eval/models/qwen2vl.py  eval/models/qwen2vl_hf.py
+and all other files under eval/ are added.
+
+Baseline prompts reproduced verbatim in eval/prompts.py
+-------------------------------------------------------
+To evaluate published baselines under their own protocols, eval/prompts.py
+reproduces prompt text from the following projects. That text remains under
+its original license.
+
+  GUI-Owl (GUIOwlPrompt)
+    https://github.com/X-PLUG/MobileAgent                  MIT
+    Copyright (c) 2022 mPLUG  -- license text reproduced below.
+
+  Qwen3-VL computer-use tool description (Qwen3VLPrompt)
+    https://github.com/QwenLM/Qwen3-VL                     Apache-2.0
+
+  Holo2 localization prompt (Holo2Prompt)
+    https://github.com/hcompai/hai-cookbook                Apache-2.0
+
+  UI-Venus grounding prompt (UIVenusPrompt)
+    https://github.com/inclusionAI/UI-Venus
+    (the repository does not state a license)
+
+
+
+--------------------------------------------------------------------------------
+MIT License (X-PLUG/MobileAgent)
+
+Copyright (c) 2022 mPLUG
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+MIT License (OpenGVLab/InternVL)
+
+Copyright (c) 2023 OpenGVLab
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
