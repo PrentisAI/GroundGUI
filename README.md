@@ -135,7 +135,7 @@ GroundGUI-8B improves over Qwen3-VL-8B on all five evaluated benchmarks and outp
 ### 1. Get the code and resources
 
 ```bash
-git clone https://github.com/Tjcas/GroundGUI.git
+git clone https://github.com/PrentisAI/GroundGUI.git
 cd GroundGUI
 ```
 
