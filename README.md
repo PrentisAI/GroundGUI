@@ -160,7 +160,7 @@ The recorded environments use **Python 3.12.13**. Prepare a separate environment
 ### 3. Prepare the data paths
 
 - **SFT:** download [ScreenRef](https://huggingface.co/datasets/PrentisAI/ScreenRef) and [ScreenRef-Annotations](https://huggingface.co/datasets/PrentisAI/ScreenRef-Annotations). Set `SCREENREF_PARQUET` to the ScreenRef directory and `DATA_ROOT` to the ScreenRef-Annotations directory; the screenshots are unpacked into `$DATA_ROOT/images/` on the first run (about 330 GB).
-- **Post-training:** set `DATASET` to the RL corpus, either its Parquet directory or a JSONL file. Parquet is converted once into `rl/data/`.
+- **Post-training:** set `DATASET` to [the RL corpus](https://huggingface.co/datasets/PrentisAI/GroundGUI_RL), either its Parquet directory or a JSONL file. Parquet is converted once into `rl/data/`.
 - **Evaluation:** organize the benchmarks according to [`eval/dataset_info.template.json`](./eval/dataset_info.template.json). The evaluation wrapper creates `eval/dataset_info.json` from this template on its first run.
 
 <a id="training"></a>
