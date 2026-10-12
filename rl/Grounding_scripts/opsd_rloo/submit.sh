@@ -1,22 +1,19 @@
 #!/bin/bash
 # Submitter for the RL runs reported in the paper. Each arm is a set of env vars on top of the
 # SAME chain, so the arms cannot drift apart in the parts that should be identical:
-#   submit.sh <arm> (this) -> train_opsd_grpo.sbatch -> train_opsd_grpo.sh -> train_grpo.sh
+#   submit.sh <arm> (this) -> train_opsd_rloo.sbatch -> train_opsd_rloo.sh -> train_rl.sh
 #
-#   bash Grounding_scripts/opsd+grpo/submit.sh <arm> [CFG]        (run from rl/)
+#   bash Grounding_scripts/opsd_rloo/submit.sh <arm> [CFG]        (run from rl/)
 #
 #   rloo      RLOO (SCALE_REWARDS=none), no OPSD term.
 #   opsd      on-policy self-distillation: every group routed to the privileged teacher,
 #             reward weight 0.
-#   D2RL      run opsd, then rloo with MODEL=BASE_MODEL=<opsd run>/checkpoint-200.
+#   D2RL      run opsd, then rloo with MODEL=BASE_MODEL=<opsd run>/checkpoint-N.
 #
-# CFG (default per arm) names the run dir output/opsd+grpo/<CFG>/; a non-empty existing dir is
+# CFG (default per arm) names the run dir output/opsd_rloo/<CFG>/; a non-empty existing dir is
 # refused unless RESUME_FROM is set. Env read here: GPUS (default 8 = 1 rollout + 7 trainers),
 # JOB_NAME, WALL_TIME, RESUME_FROM, and the beta overrides noted per arm. The whole environment
 # is forwarded to the job (--export=ALL), so set ENV_BIN (required) before calling.
-#
-# Every run evaluates a checkpoint curve on the five _v3 benchmarks and builds the prompt-matched
-# zero point once.
 #
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")/../.."
@@ -28,7 +25,7 @@ case "$ARM" in
     # --advantage_estimator change is needed (`--advantage_estimator rloo` WITHOUT
     # scale_rewards=none would be a no-op: LOO baseline / std == 8/7 * the std-normalised advantage).
     rloo)    CFG="${2:-gcua-rloo}"
-             ENVS="USE_OPSD_GRPO=false,SCALE_REWARDS=none" ;;
+             ENVS="USE_OPSD=false,SCALE_REWARDS=none" ;;
 
     # OPSD: every group routed to the privileged teacher (NZG_ROUTE_ALL) and reward weight 0,
     # so the RL advantage is identically zero and the only gradient is the teacher reverse KL.
@@ -42,8 +39,8 @@ esac
 
 # Refuse to write into a directory that already holds a run: two runs sharing a vdir would
 # interleave nzg_routing.jsonl / completions.jsonl and overwrite each other's checkpoints.
-VDIR="output/opsd+grpo/${CFG}"
-# Exception: RESUME_FROM=<ckpt>|auto (see train_grpo.sh) continues the run in this vdir.
+VDIR="output/opsd_rloo/${CFG}"
+# Exception: RESUME_FROM=<ckpt>|auto (see train_rl.sh) continues the run in this vdir.
 if [ -n "${RESUME_FROM:-}" ]; then
     [ -d "$VDIR" ] || { echo "ERROR: RESUME_FROM set but $VDIR does not exist." >&2; exit 1; }
     echo "resume: RESUME_FROM=${RESUME_FROM} -> continuing the run in $VDIR"
@@ -54,7 +51,7 @@ elif [ -e "$VDIR" ] && [ -n "$(ls -A "$VDIR" 2>/dev/null)" ]; then
 fi
 
 # Fail in one second rather than 30 minutes into an allocation.
-bash -n Grounding_scripts/opsd+grpo/train_opsd_grpo.sbatch
+bash -n Grounding_scripts/opsd_rloo/train_opsd_rloo.sbatch
 
 # GPUS=N resizes the job; the sbatch derives 1 rollout + (N-1) trainers from the allocation.
 # More GPUs shorten the epoch, not the step, and a whole node may queue much longer than 6 GPUs,
@@ -72,16 +69,16 @@ echo "dataset: ${DATASET:-<unset; required>}"
 # JOB_NAME overrides the sbatch's #SBATCH --job-name. On a shared account, give each run a
 # distinctive name so a name-based scancel cannot hit someone else's job. Unset => the sbatch's
 # own name stands.
-echo "job-name: ${JOB_NAME:-<sbatch default: groundgui-gcua-opsdgrpo>}"
+echo "job-name: ${JOB_NAME:-<sbatch default: groundgui-rl>}"
 # WALL_TIME overrides the sbatch's 16 h --time, e.g. for a short MEASURE_MODE probe. Do not
-# shorten it for a real run: training plus the eval ladder needs most of it.
+# shorten it for a real run: training needs most of it.
 echo "wall-time: ${WALL_TIME:-<sbatch default: 16:00:00>}"
 # LOCAL=1: run on this machine instead of submitting -- same environment, same sbatch file.
 if [ "${LOCAL:-0}" = 1 ]; then
     IFS=',' read -r -a _kv <<< "CFG=${CFG},${ENVS}"
     export "${_kv[@]}"
-    exec bash Grounding_scripts/opsd+grpo/train_opsd_grpo.sbatch
+    exec bash Grounding_scripts/opsd_rloo/train_opsd_rloo.sbatch
 fi
 sbatch --gres="gpu:${GPUS}" --cpus-per-task="${CPUS}" ${JOB_NAME:+--job-name="${JOB_NAME}"} \
        ${WALL_TIME:+--time="${WALL_TIME}"} \
-       --export="ALL,CFG=${CFG},${ENVS}" Grounding_scripts/opsd+grpo/train_opsd_grpo.sbatch
+       --export="ALL,CFG=${CFG},${ENVS}" Grounding_scripts/opsd_rloo/train_opsd_rloo.sbatch

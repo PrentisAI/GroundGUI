@@ -210,3 +210,4 @@ torchrun --nproc_per_node=${NPROC_PER_NODE} \
          --nnodes ${NNODES} \
          ${entry_file} ${args} \
          2>&1 | tee "${output_dir}/training_log.txt"
+exit "${PIPESTATUS[0]}"   # the trainer's exit status, not tee's

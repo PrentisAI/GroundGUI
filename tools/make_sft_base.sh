@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Make the starting directory (BASE) for refusal SFT from an RL checkpoint.
+# Make the starting directory (BASE) for the post-RL SFT (scripts/refusal_sft.sh) from an RL checkpoint.
 #
 # Usage: tools/make_sft_base.sh [--copy] <rl_checkpoint_dir> <base_dir>
 #   rl_checkpoint_dir  a checkpoint-<step>/ written by rl/ (ms-swift; transformers-4.57 format:
@@ -12,7 +12,7 @@
 # By default every file of the checkpoint is symlinked into base_dir, so nothing is copied and
 # the checkpoint itself is never modified. The sft/ environment (transformers 5.x) loads the
 # 4.57-format checkpoint as-is; no file conversion is needed in this direction.
-# Then: BASE=<base_dir> sbatch --export=ALL sft/recipes/refusal/sft_refusal.sbatch
+# Then: BASE=<base_dir> sbatch --export=ALL sft/scripts/sft_post_rl_slurm.sbatch
 set -euo pipefail
 
 mode=link
@@ -46,4 +46,10 @@ for f in "$src"/*; do
   [ -f "$f" ] || continue
   if [ "$mode" = copy ]; then cp -p "$f" "$dst/"; else ln -s "$f" "$dst/$(basename "$f")"; fi
 done
+# sft/ copies <base>/chat_template.json into its output after training; rl/ checkpoints carry the
+# same template as chat_template.jinja only, so write it in the .json form as well
+if [ ! -e "$dst/chat_template.json" ] && [ -f "$src/chat_template.jinja" ]; then
+  python3 -c 'import json, sys; json.dump({"chat_template": open(sys.argv[1]).read()}, open(sys.argv[2], "w"), indent=2)' \
+    "$src/chat_template.jinja" "$dst/chat_template.json"
+fi
 echo "  $mode: $dst <- $src ($(ls "$dst" | wc -l) files)"

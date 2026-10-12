@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Single-node (non-Slurm) launcher for the refusal-SFT recipe on Qwen3-VL-8B.
+# Single-node (non-Slurm) launcher for the post-RL SFT recipe on Qwen3-VL-8B.
 # Same training path as scripts/sft_local.sh (torchrun qwenvl/train/train_qwen.py,
 # --training_mode sft), with a short fixed-step schedule and stricter argument handling:
 # all three positional arguments are required, and an output_dir that already contains
-# checkpoint-* is rejected. Slurm wrapper: recipes/refusal/sft_refusal.sbatch.
+# checkpoint-* is rejected. Slurm wrapper: scripts/sft_post_rl_slurm.sbatch.
 #
 # Usage (run from sft/, with the SFT env's bin/ first on PATH):
-#   GPUS=8 bash recipes/refusal/sft_refusal.sh <meta.json> <output_dir> <base_model>
-#     <meta.json>   refusal meta file (e.g. recipes/refusal/meta_refusal.json)
+#   GPUS=8 bash scripts/sft_post_rl.sh <meta.json> <output_dir> <base_model>
+#     <meta.json>   post-RL meta file (e.g. configs/train_data_post_rl.json)
 #     <output_dir>  new directory; must not contain checkpoint-*
 #     <base_model>  model dir to fine-tune; its path must contain "qwen3" and "vl"
 #
@@ -15,7 +15,7 @@
 # see sft/requirements.lock.txt for the tested stack.
 #
 # Optional env vars (default):
-#   MAX_STEPS (75), SAVE_STEPS (25), LOGGING_STEPS (25), RUN_NAME (q3vl8b-refusal)
+#   MAX_STEPS (75), SAVE_STEPS (25), LOGGING_STEPS (25), RUN_NAME (q3vl8b-post-rl)
 #   GPUS (4), NPROC_PER_NODE (=GPUS), NNODES (1), NODE_RANK (0),
 #   MASTER_ADDR (127.0.0.1), MASTER_PORT (31520)
 #   CUDA_HOME (/usr/local/cuda-13.2), PYTORCH_CUDA_ALLOC_CONF (expandable_segments:True)
@@ -163,7 +163,7 @@ echo "PACK_CARRY=${PACK_CARRY} PACK_CARRY_LIMIT=${PACK_CARRY_LIMIT}"
 entry_file=qwenvl/train/train_qwen.py
 
 # Output configuration
-run_name="${RUN_NAME:-q3vl8b-refusal}"
+run_name="${RUN_NAME:-q3vl8b-post-rl}"
 
 echo "Launching torchrun: GPUS=${GPUS}, NNODES=${NNODES}, NPROC_PER_NODE=${NPROC_PER_NODE}, MASTER_ADDR=${MASTER_ADDR}, MASTER_PORT=${MASTER_PORT}, META=${datasets}, OUTPUT=${output_dir}, PRETRAINED=${pretrained}"
 
@@ -225,3 +225,4 @@ torchrun --nproc_per_node=${NPROC_PER_NODE} \
          --nnodes ${NNODES} \
          ${entry_file} ${args} \
          2>&1 | tee "${output_dir}/training_log.txt"
+exit "${PIPESTATUS[0]}"   # the trainer's exit status, not tee's

@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Slurm wrapper for the refusal-SFT recipe (recipes/refusal/sft_refusal.sh, Qwen3-VL-8B,
+# Slurm wrapper for the post-RL SFT recipe (scripts/sft_post_rl.sh, Qwen3-VL-8B,
 # single node). Same env setup and preflight checks as scripts/sft_8b_slurm.sbatch; the
 # inner launcher starts torchrun itself, so Slurm allocates a single task.
 #
 # Usage (from sft/):
-#   CONDA_ENV=<sft env> META=recipes/refusal/meta_refusal.json OUTD=<out> BASE=<model dir> \
-#     sbatch --export=ALL recipes/refusal/sft_refusal.sbatch
+#   CONDA_ENV=<sft env> META=configs/train_data_post_rl.json OUTD=<out> BASE=<model dir> \
+#     sbatch --export=ALL scripts/sft_post_rl_slurm.sbatch
 #
 # Required env vars:
 #   CONDA_ENV   prefix of the SFT env (conda env or venv; see sft/requirements.lock.txt)
-#   META        refusal meta json
+#   META        post-RL meta json
 #   OUTD        output dir; must not already contain checkpoint-*
 #   BASE        model dir to fine-tune (made from the RL checkpoint by tools/make_sft_base.sh); its path must
 #               contain "qwen3" and "vl"
-# Optional env vars: RECIPE_DIR (recipes/refusal), CUDA_HOME, and everything
-#   sft_refusal.sh reads (MAX_STEPS, SAVE_STEPS, RUN_NAME, MAX_GRAD_NORM, ...). Pass them
+# Optional env vars: RECIPE_DIR (scripts), CUDA_HOME, and everything
+#   sft_post_rl.sh reads (MAX_STEPS, SAVE_STEPS, RUN_NAME, MAX_GRAD_NORM, ...). Pass them
 #   with --export=ALL,...; without ALL the job environment is replaced and PATH is lost.
 #
 # Adjust --partition / resources below to your cluster.
 #
-#SBATCH --job-name=groundgui-refusal
+#SBATCH --job-name=groundgui-post-rl
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -121,7 +121,7 @@ echo "[env] ${CONDA_ENV} | python=$(python -V 2>&1) | transformers=$(python -c '
 
 # Paths come only from META / OUTD / BASE; positional arguments are rejected so that a
 # typo on the sbatch command line cannot redirect the run.
-META="${META:?set META=<refusal meta json>}"
+META="${META:?set META=<post-RL meta json>}"
 OUTD="${OUTD:?set OUTD=<output dir>}"
 BASE="${BASE:?set BASE=<dir made by tools/make_sft_base.sh from the RL checkpoint>}"
 
@@ -143,8 +143,8 @@ case "$(echo "${BASE}" | tr 'A-Z' 'a-z')" in
   *qwen3*vl*) : ;;
   *) echo "ERROR: BASE path does not contain both 'qwen3' and 'vl'. train_qwen.py picks the model class from the model_name_or_path string (not config.json); without them it silently takes the Qwen2-VL branch and crashes on vision-tower shapes: ${BASE}"; exit 1 ;;
 esac
-echo "[refusal] META=${META}"
-echo "[refusal] OUT =${OUTD}"
-echo "[refusal] BASE=${BASE}"
+echo "[post-rl] META=${META}"
+echo "[post-rl] OUT =${OUTD}"
+echo "[post-rl] BASE=${BASE}"
 
-GPUS="${GPUS}" MASTER_PORT="${MASTER_PORT}" bash "${RECIPE_DIR:-recipes/refusal}/sft_refusal.sh" "${META}" "${OUTD}" "${BASE}"
+GPUS="${GPUS}" MASTER_PORT="${MASTER_PORT}" bash "${RECIPE_DIR:-scripts}/sft_post_rl.sh" "${META}" "${OUTD}" "${BASE}"

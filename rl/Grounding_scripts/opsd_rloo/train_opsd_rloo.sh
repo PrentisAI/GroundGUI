@@ -1,16 +1,16 @@
 #!/bin/bash
-# OPSD+GRPO arm defaults -- thin wrapper around train_grpo.sh (RSTG, arXiv:2608.00782):
+# Arm defaults (rloo / opsd) -- thin wrapper around train_rl.sh (RSTG, arXiv:2608.00782):
 # routing on negative zero-variance (all-miss) groups plus a GT tool-call SFT term, optionally
 # the A_OPD privileged-teacher term.
 #
-# Chain:  submit.sh <arm> -> train_opsd_grpo.sbatch -> train_opsd_grpo.sh (this) -> train_grpo.sh
+# Chain:  submit.sh <arm> -> train_opsd_rloo.sbatch -> train_opsd_rloo.sh (this) -> train_rl.sh
 #
 # Run by the sbatch under srun; it only sets defaults (every one is ${VAR:-default}, so the
-# arm's --export env wins) and execs train_grpo.sh. By hand, on a full 8-GPU node:
-#   ENV_BIN=<rl env>/bin bash Grounding_scripts/opsd+grpo/train_opsd_grpo.sh
+# arm's --export env wins) and execs train_rl.sh. By hand, on a full 8-GPU node:
+#   ENV_BIN=<rl env>/bin bash Grounding_scripts/opsd_rloo/train_opsd_rloo.sh
 #
-# This is a WRAPPER, not a fork: all of the recipe lives in train_grpo.sh, and with
-# USE_OPSD_GRPO=false the command line is the plain RL recipe, so the arms differ only in the
+# This is a WRAPPER, not a fork: all of the recipe lives in train_rl.sh, and with
+# USE_OPSD=false the command line is the plain RL recipe, so the arms differ only in the
 # flags below. Compare arms only across runs with the same init, corpus and prompt, and
 # identical BS/GAS/NUM_GEN/LR/TEMPERATURE.
 #
@@ -37,20 +37,20 @@ export BS="${BS:-2}"
 export GAS="${GAS:-24}"
 export NUM_GEN="${NUM_GEN:-8}"
 # Dense checkpoints (every 25 steps, ~17 GiB each): RL accuracy can peak mid-run and then
-# decay, so the eval stage reads a curve, not just the last checkpoint.
+# decay, so evaluate several checkpoints, not just the last one.
 export SAVE_STEPS="${SAVE_STEPS:-25}"
 export DL_WORKERS="${DL_WORKERS:-12}"
 
 # Binary in-box reward ONLY. The NZG branch is defined on the GroundAcc column; a continuous
 # term (g2acc) would let all-miss groups keep reward variance and break the routing.
-export REWARD_FUNCS="${REWARD_FUNCS:-ground-acc}"        # binary only: see the NZG guard in train_grpo.sh
+export REWARD_FUNCS="${REWARD_FUNCS:-ground-acc}"        # binary only: see the NZG guard in train_rl.sh
 export REWARD_WEIGHTS="${REWARD_WEIGHTS:-1.0}"      # must stay positive: the trainer refuses weight<=0 on GroundAcc
 export SCALE_REWARDS="${SCALE_REWARDS:-group}"
 export DYNAMIC_SAMPLE=false
 
 # ${VAR:-default}, never a bare export: the `rloo` arm passes
-# USE_OPSD_GRPO=false via --export, and a hard-coded value here would silently override it.
-export USE_OPSD_GRPO="${USE_OPSD_GRPO:-true}"
+# USE_OPSD=false via --export, and a hard-coded value here would silently override it.
+export USE_OPSD="${USE_OPSD:-true}"
 export NZG_BETA_PEAK="${NZG_BETA_PEAK:-0.005}"     # RSTG beta_init = 5e-3
 export NZG_BETA_VALLEY="${NZG_BETA_VALLEY:-0.001}" # RSTG beta_min  = 1e-3
 export NZG_WARMUP="${NZG_WARMUP:-0}"
@@ -74,15 +74,15 @@ export NZG_ROUTE_ALL="${NZG_ROUTE_ALL:-false}"
 # Teacher = the RL init with privileged input (masked image + hint), no EMA. It must be the
 # same model as the policy init, so the privilege comes from the input, not from a capability
 # gap; a different model would also not share the init's prompt and per-mille coordinates.
-export TEACHER_MODEL="${TEACHER_MODEL:-}"   # required by the OPSD term; train_grpo.sh checks
+export TEACHER_MODEL="${TEACHER_MODEL:-}"   # required by the OPSD term; train_rl.sh checks
 # ZeRO-2, not ZeRO-3: a ZeRO-3 teacher all-gathers inside its forward, and the OPD forward is
-# rank-conditional, so the step would hang (details in train_grpo.sh).
+# rank-conditional, so the step would hang (details in train_rl.sh).
 export TEACHER_DEEPSPEED="${TEACHER_DEEPSPEED:-zero2}"
-# `hint`, not `hint_minimal`: see the note in train_grpo.sh.
+# `hint`, not `hint_minimal`: see the note in train_rl.sh.
 export OPSD_HINT_MODE="${OPSD_HINT_MODE:-hint}"
 export OPSD_MASK_MODE="${OPSD_MASK_MODE:-gaussian}"
 
-export OUT_DIR="${OUT_DIR:-output/opsd+grpo}"
+export OUT_DIR="${OUT_DIR:-output/opsd_rloo}"
 export RUN_TAG="${RUN_TAG:-gcua-run}"
 
-exec bash Grounding_scripts/train_grpo.sh
+exec bash Grounding_scripts/train_rl.sh

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the ground_benchmark/*.jsonl files that Grounding_scripts/test_6gpu.sh expects.
+"""Build the ground_benchmark/*.jsonl files for `swift infer` evaluation.
 
 The GUI-SD authors never released these files, nor the `os_worldg.py` /
 `MMbench.py` converters their metric code refers to.  This script rebuilds them

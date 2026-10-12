@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pre-launch gate for the GroundCUA OPSD+GRPO pipeline. CPU-only, takes seconds.
+"""Pre-launch gate for the RLOO / OPSD pipeline. CPU-only, takes seconds.
 
 Every check here corresponds to a failure that is either SILENT or costs hours of a scarce
 multi-GPU allocation before it surfaces. Run it before every submission.
@@ -144,7 +144,17 @@ def main():
         else:
             check("model dir basename auto-matches a registered model", True, "no args.json needed")
 
-        for f in ("model.safetensors", "tokenizer.json", "chat_template.json", "preprocessor_config.json"):
+        # weights: model.safetensors, or the sharded layout rl/ checkpoints are saved in (index +
+        # every shard it lists); chat template: chat_template.json, or chat_template.jinja
+        has = lambda f: os.path.exists(os.path.join(a.model, f))
+        weights = ("model.safetensors",)
+        if not has("model.safetensors") and has("model.safetensors.index.json"):
+            with open(os.path.join(a.model, "model.safetensors.index.json")) as fh:
+                weights = ("model.safetensors.index.json",
+                           *sorted(set(json.load(fh)["weight_map"].values())))
+        tmpl = "chat_template.jinja" if has("chat_template.jinja") and not has("chat_template.json") \
+            else "chat_template.json"
+        for f in (*weights, "tokenizer.json", tmpl, "preprocessor_config.json"):
             p = os.path.join(a.model, f)
             check(f"model dir has {f}", os.path.exists(p),
                   f"{os.path.getsize(p)/2**20:.1f} MiB" if os.path.exists(p) else "MISSING")

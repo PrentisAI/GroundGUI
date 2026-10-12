@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ENV_PREFIX=<eval env> DATA_ROOT=<benchmark root> scripts/eval.sh <checkpoint> [output_dir]
-#     checkpoint  an RL checkpoint (used as is) or an SFT / refusal-SFT checkpoint saved by
+#     checkpoint  an RL checkpoint (used as is) or an SFT checkpoint (incl. scripts/refusal_sft.sh) saved by
 #                 transformers 5 (converted into <output_dir>/serve first by
 #                 tools/build_serve_dir.sh; needs INSTRUCT_DIR=<Qwen3-VL-8B-Instruct dir>)
 #     output_dir  default <checkpoint>-eval; results go to <output_dir>/<benchmark>/

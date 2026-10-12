@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Turn swift infer result jsonl into per-sample grounding records + a summary.
 
-Stage 1 of the error analysis. Reads exp/<run>/infer/<ds>.jsonl (the output of
-Grounding_scripts/test_6gpu.sh) and writes, per dataset:
+Stage 1 of the error analysis. Reads exp/<run>/infer/<ds>.jsonl (`swift infer`
+output on a ground_benchmark file) and writes, per dataset:
 
     exp/<run>/analysis/<ds>.records.jsonl   one row per sample, all derived fields
     exp/<run>/analysis/summary.json         accuracy tables + error-type histograms
@@ -64,7 +64,7 @@ CATEGORIES = ['A1_NO_TOOL_CALL', 'A2_REFUSAL_CLICKED', 'B1_METRIC_CEILING',
 # (swift/model/models/qwen.py:705-716). One merged token is a 32x32 pixel cell
 # of the *resized* image.
 IMAGE_FACTOR = 32
-MAX_PIXELS = 10000 * IMAGE_FACTOR ** 2       # IMAGE_MAX_TOKEN_NUM=10000 in test_6gpu.sh
+MAX_PIXELS = 10000 * IMAGE_FACTOR ** 2       # IMAGE_MAX_TOKEN_NUM=10000 at inference
 MIN_PIXELS = 4 * IMAGE_FACTOR ** 2
 
 

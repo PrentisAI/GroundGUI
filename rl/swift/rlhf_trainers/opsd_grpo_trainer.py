@@ -21,7 +21,7 @@ where ``J_SFT`` and ``J_OPSD`` are computed on the routed rows only:
 * ``--nzg_route_all true`` routes every group, not only NZG groups. With
   ``--reward_weights 0`` the GRPO term vanishes and the run is on-policy
   self-distillation (OPSD): the ``opsd`` arm of
-  ``Grounding_scripts/opsd+grpo/submit.sh``.
+  ``Grounding_scripts/opsd_rloo/submit.sh``.
 
 Both betas default to 0, in which case the trainer reduces to plain GRPO.
 
@@ -193,7 +193,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
                                        # read inside the same _generate_and_score_completions call
                                        # (copied into the batch there) -- never from the loss, see
                                        # the note on _nzg_sft_scale
-        logger.info(f'[opsd+grpo] NZG routing on reward column {self.nzg_reward_name!r}; '
+        logger.info(f'[opsd] NZG routing on reward column {self.nzg_reward_name!r}; '
                     f'SFT beta peak={self.nzg_sft_beta_peak} valley={self.nzg_sft_beta_valley} '
                     f'warmup={self.nzg_sft_warmup_steps} decay={self.nzg_sft_decay_steps}; '
                     + ('ALL K rollouts supervised' if self.nzg_sft_all_rollouts else
@@ -213,11 +213,11 @@ class OPSDGRPOTrainer(GRPOTrainer):
         own_w = float(self.reward_weights[col])
         if own_w < 0:
             raise ValueError(
-                f'--use_opsd_grpo needs a POSITIVE weight on {self.nzg_reward_name!r} (got {own_w}). At 0 the GRPO '
+                f'--use_opsd_grpo needs a POSITIVE weight on {self.nzg_reward_name!r} (got {own_w}). At 0 the RL '
                 'advantage is identically zero while the NZG branch still fires, and at a negative weight the '
                 'advantage is inverted -- either way the run is not the routed objective.')
         if own_w == 0:
-            logger.warning('weight 0 on %s: the GRPO advantage is identically zero, so this run is PURE DISTILLATION '
+            logger.warning('weight 0 on %s: the RL advantage is identically zero, so this run is PURE DISTILLATION '
                            '(teacher KL only, no policy-gradient term). Teacher routing: %s.', self.nzg_reward_name,
                            'ALL groups (nzg_route_all)' if self.nzg_route_all else 'all-miss groups only')
         other = [(n, float(w)) for i, (n, w) in enumerate(zip(self.reward_func_names, self.reward_weights))
@@ -226,7 +226,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
             raise ValueError(
                 f'--use_opsd_grpo with a second non-zero-weight reward {other} is NOT the routed objective. A group '
                 f'that misses on {self.nzg_reward_name} can still have non-zero variance in a continuous reward '
-                '(g2acc), so the parent hands it a non-zero A_GRPO and you get GRPO(A_GRPO) + beta*SFT, not the '
+                '(g2acc), so the parent hands it a non-zero RL advantage and you get RL + beta*SFT, not the '
                 'RSTG branch. Use --reward_funcs ground-acc --reward_weights 1.0, or pass '
                 '--nzg_allow_mixed_reward true if that hybrid is what you actually want.')
 
@@ -241,7 +241,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
                              'coef_1 != 1, the PPO clip goes live and the two terms stop being comparable.')
         if getattr(a, 'loss_type', 'grpo') != 'grpo':
             raise ValueError(f'--use_opsd_grpo pins --loss_type grpo (got {a.loss_type!r}); bnpo and dr_grpo use '
-                             'different normalizers, which silently rescales the SFT beta against the GRPO term.')
+                             'different normalizers, which silently rescales the SFT beta against the RL term.')
         if getattr(self, 'use_liger_loss', False):
             raise ValueError('--use_opsd_grpo is incompatible with --use_liger_kernel true: compute_loss routes to '
                              'compute_liger_loss (grpo_trainer.py:1063) and never reaches '
@@ -311,7 +311,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
                                  'different experiment (and makes the teacher trivially right).')
         if self.nzg_sft_beta_peak <= 0 and self.nzg_opd_beta_peak <= 0:
             logger.warning('--use_opsd_grpo is on but both nzg_sft_beta_peak and nzg_opd_beta_peak <= 0: this run '
-                           'is identical to plain GRPO except for the NZG bookkeeping metrics.')
+                           'is identical to plain RL except for the NZG bookkeeping metrics.')
 
     def _prepare_opd_teacher(self):
         """Bring up the privileged teacher, mirroring OPSDTrainer.__init__.
@@ -333,7 +333,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
             self.teacher_model = self.accelerator.prepare_model(self._nzg_teacher_model, evaluation_mode=True)
         self.teacher_model.eval()
         self.teacher_model.requires_grad_(False)
-        logger.info(f'[opsd+grpo] OPD branch ON: teacher up (deepspeed={self.is_deepspeed_enabled}, '
+        logger.info(f'[opsd] OPD branch ON: teacher up (deepspeed={self.is_deepspeed_enabled}, '
                     f'teacher_ds3={getattr(self, "is_teacher_ds3", None)}), '
                     f'hint_mode={getattr(self.args, "opsd_hint_mode", "hint")!r} '
                     f'mask_mode={getattr(self.args, "opsd_mask_mode", "zoom_in")!r} '
@@ -466,7 +466,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
         if not self.accelerator.is_main_process:
             return
         if not (len(allrec) == len(row_nzg) == hits.numel()):
-            logger.warning(f'[opsd+grpo] routing log skipped: gather mismatch '
+            logger.warning(f'[opsd] routing log skipped: gather mismatch '
                            f'{len(allrec)}/{len(row_nzg)}/{hits.numel()}')
             return
         hl = hits.tolist()
@@ -581,7 +581,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
             # says "the policy no longer writes the shape the SFT target assumes".
             self._nzg_fmt_match = fmt_ok / fmt_n
             if self._nzg_fmt_match < 0.9:
-                logger.warning(f'[opsd+grpo] only {self._nzg_fmt_match:.1%} of supervised NZG completions that DO '
+                logger.warning(f'[opsd] only {self._nzg_fmt_match:.1%} of supervised NZG completions that DO '
                                f'emit a coordinate still contain {_FORMAT_PROBE!r}: the policy has drifted off the '
                                'tool-call shape the SFT target assumes, so this term is teaching a second format.')
         return batches
@@ -807,10 +807,10 @@ class OPSDGRPOTrainer(GRPOTrainer):
         # informative (the two terms disagree on this step). A `<=` test would report
         # those decreases as silent no-ops, which is exactly backwards.
         if want and after == before:
-            logger.warning(f'[opsd+grpo] the SFT backward deposited NO gradient '
+            logger.warning(f'[opsd] the SFT backward deposited NO gradient '
                            f'(||g|| unchanged at {before:.4e}): the branch is a silent no-op.')
         elif want and after < before:
-            logger.info(f'[opsd+grpo] SFT gradient partially CANCELLED the accumulated '
+            logger.info(f'[opsd] SFT gradient partially CANCELLED the accumulated '
                         f'gradient (||g|| {before:.4e} -> {after:.4e}); the terms disagree on '
                         'this step. Not a no-op.')
         return float(sft_loss.detach().item()), (before, after)
@@ -832,7 +832,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
             with open(src, encoding='utf-8') as f:
                 text = f.read()
         except OSError as e:
-            logger.warning(f'[opsd+grpo] could not read {src} for hint parity ({e}); check skipped')
+            logger.warning(f'[opsd] could not read {src} for hint parity ({e}); check skipped')
             return
         # Checked FRAGMENT by fragment, not as one joined string: opsd_trainer.py
         # writes hint_minimal as a two-line implicit concatenation, so the joined text
@@ -1082,7 +1082,7 @@ class OPSDGRPOTrainer(GRPOTrainer):
         # rather than "did not increase": on a later micro-batch within the same step the
         # accumulator is non-zero and cancellation is possible. See the SFT probe.
         if want and after == before:
-            logger.warning(f'[opsd+grpo] the A_OPD backward deposited NO gradient '
+            logger.warning(f'[opsd] the A_OPD backward deposited NO gradient '
                            f'(||g|| unchanged at {before:.4e}): the branch is a silent no-op.')
         return float(opd_loss.detach().item()), (before, after)
 

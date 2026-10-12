@@ -159,8 +159,8 @@ The recorded environments use **Python 3.12.13**. Prepare a separate environment
 
 ### 3. Prepare the data paths
 
-- **SFT:** [`sft/configs/train_data_sft.json`](./sft/configs/train_data_sft.json) defines the data mix and format. Its `${DATA_ROOT}/...` paths are illustrative; adapt the configuration to your local ScreenRef layout.
-- **Post-training:** set `DATASET` to the absolute path of your RL corpus in JSONL format.
+- **SFT:** download [ScreenRef](https://huggingface.co/datasets/PrentisAI/ScreenRef) and [ScreenRef-Annotations](https://huggingface.co/datasets/PrentisAI/ScreenRef-Annotations). Set `SCREENREF_PARQUET` to the ScreenRef directory and `DATA_ROOT` to the ScreenRef-Annotations directory; the screenshots are unpacked into `$DATA_ROOT/images/` on the first run (about 330 GB).
+- **Post-training:** set `DATASET` to the RL corpus, either its Parquet directory or a JSONL file. Parquet is converted once into `rl/data/`.
 - **Evaluation:** organize the benchmarks according to [`eval/dataset_info.template.json`](./eval/dataset_info.template.json). The evaluation wrapper creates `eval/dataset_info.json` from this template on its first run.
 
 <a id="training"></a>
@@ -173,32 +173,32 @@ Run the commands below from the repository root and replace `/path/to/...` with 
 
 ```bash
 CONDA_ENV="/path/to/sft-env" \
-DATA_ROOT="/path/to/ScreenRef" \
+DATA_ROOT="/path/to/ScreenRef-Annotations" \
+SCREENREF_PARQUET="/path/to/ScreenRef" \
 GPUS=4 \
 bash scripts/sft.sh out/sft "/path/to/Qwen3-VL-8B-Instruct"
 ```
 
-The default data configuration is `sft/configs/train_data_sft.json`. Pass a custom configuration as the third argument to `scripts/sft.sh` if needed. Checkpoints are written to `out/sft/checkpoint-*`.
+The default data configuration is `meta/meta_non_refusal.json` in ScreenRef-Annotations. Pass a custom configuration as the third argument to `scripts/sft.sh` if needed. The trained model is saved under `out/sft/`.
 
 ### Stages 2–3 · D2RL: OPSD followed by RLOO
 
 ```bash
 export ENV_BIN="/path/to/rl-env/bin"
-export DATASET="/path/to/rl-corpus.jsonl"
+export DATASET="/path/to/rl-corpus"
 
-# Set this to the SFT checkpoint you want to continue from.
-SFT_CHECKPOINT="/absolute/path/to/out/sft/checkpoint-N"
+# The SFT model from Stage 1.
+SFT_MODEL="/path/to/sft-model"
 
 # Stage 2: distill from the privileged teacher.
-bash scripts/opsd.sh "$SFT_CHECKPOINT" groundgui-opsd
+bash scripts/opsd.sh "$SFT_MODEL" groundgui-opsd
 
-# Stage 3: optimize click success from the OPSD checkpoint.
-bash scripts/rloo.sh \
-  rl/output/opsd+grpo/groundgui-opsd/checkpoint-200 \
-  groundgui-d2rl
+# Stage 3: optimize click success from the OPSD model.
+OPSD_MODEL="/path/to/opsd-model"
+bash scripts/rloo.sh "$OPSD_MODEL" groundgui-d2rl
 ```
 
-By default, the SFT checkpoint also initializes the frozen OPSD teacher.
+Trained models are saved under `rl/output/opsd_rloo/<run_name>/`. By default, the SFT model also initializes the frozen OPSD teacher.
 
 <a id="evaluation"></a>
 
@@ -213,16 +213,15 @@ TP=2 \
 bash scripts/eval.sh "/path/to/GroundGUI-8B" out/eval/groundgui-8b
 ```
 
-Replace the checkpoint path with a downloaded GroundGUI-8B model directory or a local training checkpoint. Results are saved to `out/eval/groundgui-8b/<benchmark>/`.
+Replace the checkpoint path with a downloaded GroundGUI-8B model directory or a locally trained model. For an SFT model, also set `INSTRUCT_DIR="/path/to/Qwen3-VL-8B-Instruct"`; RL models are evaluated as is. Results are saved to `out/eval/groundgui-8b/<benchmark>/`.
 
 To evaluate the D2RL run above:
 
 ```bash
+D2RL_MODEL="/path/to/d2rl-model"
 ENV_PREFIX="/path/to/eval-env" \
 DATA_ROOT="/path/to/benchmarks" \
-bash scripts/eval.sh \
-  rl/output/opsd+grpo/groundgui-d2rl/checkpoint-200 \
-  out/eval/groundgui-d2rl
+bash scripts/eval.sh "$D2RL_MODEL" out/eval/groundgui-d2rl
 ```
 
 <a id="repository-structure"></a>

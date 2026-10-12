@@ -1,22 +1,22 @@
 #!/bin/bash
-# Grounding RL launcher: GRPO / RLOO, optionally with the OPSD+GRPO branch.
+# Grounding RL launcher: RLOO, optionally with the OPSD term.
 #
-# Chain:  submit.sh <arm> -> train_opsd_grpo.sbatch -> train_opsd_grpo.sh -> train_grpo.sh (this)
+# Chain:  submit.sh <arm> -> train_opsd_rloo.sbatch -> train_opsd_rloo.sh -> train_rl.sh (this)
 #
 # Topology-neutral core. On one node it starts a 1-GPU vLLM rollout server (`swift rollout`,
 # TP=1) and a DDP + ZeRO-2 trainer (`swift rlhf --rlhf_type grpo`) on the remaining GPUs.
 # Generation is a small fraction of a step, so one rollout GPU is enough. Normally called by
-# train_opsd_grpo.sh; to run it directly, set the GPU split yourself:
+# train_opsd_rloo.sh; to run it directly, set the GPU split yourself:
 #
 #   ENV_BIN=<rl env>/bin GPU_ROLLOUT=7 GPUS_TRAINER=0,1,2,3,4,5,6 \
-#       bash Grounding_scripts/train_grpo.sh
+#       bash Grounding_scripts/train_rl.sh
 #
 # Required: ENV_BIN (bin/ of the RL env, see rl/requirements.lock.txt).
 # Optional (defaults below): MODEL DATASET OUT_DIR ADD_VERSION RUN_TAG LOGDIR, GPU_ROLLOUT
 #   GPUS_TRAINER PORT MASTER_PORT DL_WORKERS, NUM_GEN BS GAS LR EPOCHS TEMPERATURE BETA
-#   MAX_GRAD_NORM GRAD_CKPT, SCALE_REWARDS (group = GRPO, none = RLOO-style), REWARD_FUNCS
+#   MAX_GRAD_NORM GRAD_CKPT, SCALE_REWARDS (none = RLOO; group = also divide by the group std), REWARD_FUNCS
 #   REWARD_WEIGHTS DYNAMIC_SAMPLE, MEASURE_MODE MAX_STEPS SAVE_STEPS SAVE_ONLY_MODEL RESUME_FROM,
-#   REPORT_TO SWANLAB_MODE_ARG, USE_OPSD_GRPO + NZG_*/TEACHER_*/OPSD_*.
+#   REPORT_TO SWANLAB_MODE_ARG, USE_OPSD + NZG_*/TEACHER_*/OPSD_*.
 #
 # CORRECTNESS -- each of these fails silently if wrong:
 # 1. The rollout server MUST run with --vllm_enforce_eager true. It is a separate process, so
@@ -35,7 +35,7 @@
 #   g2acc        dense    GUI-G^2 gaussian point reward, sigma = 0.5 * bbox side
 #   bbox-reward  mixed    GUI-G1 style R_hit + 0.25*R_dist + 0.125*R_box
 #   ground-format          1.0 iff a parseable <tool_call> was emitted
-# Default here is `ground-acc g2acc` at 1.0 / 0.5 (the OPSD+GRPO wrapper uses binary only).
+# Default here is `ground-acc g2acc` at 1.0 / 0.5 (the opsd_rloo wrapper uses binary only).
 # Binary alone gives zero variance (no gradient) for groups that all land in-box; the gaussian
 # still separates those. It does not rescue far misses (most sit >4 sigma out, score <1e-3).
 # Every reward is logged per sample into completions.jsonl.
@@ -52,7 +52,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 cd "$REPO"
 
-run_name="groundcua-grpo"
+run_name="groundgui-rl"
 # MODEL: the Qwen3-VL-8B SFT checkpoint as prepared by Grounding_scripts/prepare_ckpt.py.
 # Do not use the raw SFT dir: its transformers-5 config.json makes the trainer die under
 # transformers 4.57.6 ('NoneType' object has no attribute 'get' in Qwen3VLTextRotaryEmbedding)
@@ -134,7 +134,7 @@ MAX_STEPS="${MAX_STEPS:-60}"
 REWARD_FUNCS="${REWARD_FUNCS:-ground-acc g2acc}"
 REWARD_WEIGHTS="${REWARD_WEIGHTS:-1.0 0.5}"
 
-# ---- GRPO knobs -------------------------------------------------------------
+# ---- RL knobs ---------------------------------------------------------------
 # generation_batch_size = BS * n_trainer_gpus * GAS  (steps_per_generation defaults
 # to GAS), and generation_batch_size / NUM_GEN = UNIQUE PROMPTS per optimizer step,
 # which sets the epoch length (steps per epoch = corpus rows / prompts per step):
@@ -159,7 +159,7 @@ TEMPERATURE="${TEMPERATURE:-1.0}"
 # beta = KL to the reference policy. 0 builds NO reference model (DAPO/Dr.GRPO default),
 # saving a second 8B model in memory.
 BETA="${BETA:-0.0}"
-# group = GRPO; none = no per-group std division (RLOO-style advantage).
+# none = RLOO advantage (R - group mean, no std division); group = also divide by the group std.
 SCALE_REWARDS="${SCALE_REWARDS:-group}"
 # DAPO dynamic sampling: resample groups whose reward std is 0. Keep it OFF while
 # measuring the zero-variance rate -- it would hide exactly that number.
@@ -174,6 +174,15 @@ GPU_ROLLOUT="${GPU_ROLLOUT:-7}"
 GPUS_TRAINER="${GPUS_TRAINER:-0,1,2,3,4,5,6}"
 NPROC=$(awk -F',' '{print NF}' <<< "$GPUS_TRAINER")
 PORT="${PORT:-8199}"
+# swift rollout uses the first free port from --port on; pick it here so both sides agree.
+PORT=$("$ENV/python" -c 'import socket, sys
+p = int(sys.argv[1])
+for q in range(p, p + 100):
+    with socket.socket() as s:
+        try:
+            s.bind(("", q)); print(q); break
+        except OSError:
+            pass' "$PORT")
 MASTER_PORT="${MASTER_PORT:-29517}"
 
 # ~17 GiB per checkpoint. The last step is always saved.
@@ -183,15 +192,15 @@ SAVE_STEPS="${SAVE_STEPS:-125}"
 # non-interactive job; add it with REPORT_TO="tensorboard swanlab" (local mode, see below).
 REPORT_TO="${REPORT_TO:-tensorboard}"
 
-# ---- OPSD+GRPO (RSTG, arXiv:2608.00782) -----------------------------------
-# Trainer: swift/rlhf_trainers/opsd_grpo_trainer.py. USE_OPSD_GRPO=false (default) leaves
-# OPSD_ARGS empty, i.e. plain GRPO. rlhf_type stays 'grpo': --use_opsd_grpo only selects the
-# trainer class, so all GRPO setup is identical to a plain run.
+# ---- OPSD term (RSTG, arXiv:2608.00782) -----------------------------------
+# Trainer: swift/rlhf_trainers/opsd_grpo_trainer.py. USE_OPSD=false (default) leaves
+# OPSD_ARGS empty, i.e. plain RL. rlhf_type stays 'grpo': --use_opsd_grpo only selects the
+# trainer class, so all other setup is identical to a plain run.
 #   NZG_BETA_PEAK/VALLEY: RSTG anneals 5e-3 -> 1e-3; its Table 2 shows a large or
 #   constant beta degrades everything. Do not raise it.
 #   REWARD_FUNCS must contain ground-acc: "all rollouts fail" is read off that binary column.
 #   DYNAMIC_SAMPLE must stay false (discarding zero-variance groups is the competing fix).
-USE_OPSD_GRPO="${USE_OPSD_GRPO:-false}"
+USE_OPSD="${USE_OPSD:-false}"
 NZG_BETA_PEAK="${NZG_BETA_PEAK:-0.005}"
 NZG_BETA_VALLEY="${NZG_BETA_VALLEY:-0.001}"
 NZG_WARMUP="${NZG_WARMUP:-0}"
@@ -231,7 +240,7 @@ case " $REPORT_TO " in
     *" swanlab "*) SWANLAB_ARGS=(--swanlab_mode "$SWANLAB_MODE_ARG") ;;
 esac
 OPSD_ARGS=()
-if [ "$USE_OPSD_GRPO" = "true" ]; then
+if [ "$USE_OPSD" = "true" ]; then
     OPSD_ARGS=(--use_opsd_grpo true
                --nzg_reward_name GroundAcc
                --nzg_sft_beta_peak "$NZG_BETA_PEAK"
@@ -269,16 +278,16 @@ if [ "$USE_OPSD_GRPO" = "true" ]; then
         # the step hangs. Do not switch to zero3.
     fi
     # A second non-zero-weight continuous reward breaks the routing: an all-miss group can
-    # still have variance, get a non-zero A_GRPO, and you get GRPO + beta*SFT, not RSTG.
+    # still have variance, get a non-zero RL advantage, and you get RL + beta*SFT, not RSTG.
     if [ "$REWARD_FUNCS" != "ground-acc" ] && [ "$NZG_ALLOW_MIXED" != "true" ]; then
-        echo "ERROR: USE_OPSD_GRPO=true wants REWARD_FUNCS='ground-acc' REWARD_WEIGHTS='1.0'" >&2
+        echo "ERROR: USE_OPSD=true wants REWARD_FUNCS='ground-acc' REWARD_WEIGHTS='1.0'" >&2
         echo "       (got REWARD_FUNCS='${REWARD_FUNCS}' REWARD_WEIGHTS='${REWARD_WEIGHTS}')." >&2
-        echo "       Set NZG_ALLOW_MIXED=true only if the GRPO+SFT hybrid on a continuous" >&2
+        echo "       Set NZG_ALLOW_MIXED=true only if the RL+SFT hybrid on a continuous" >&2
         echo "       reward is deliberately what you want -- it is NOT the RSTG method." >&2
         exit 1
     fi
     [ "$DYNAMIC_SAMPLE" = "false" ] || {
-        echo "ERROR: USE_OPSD_GRPO=true is incompatible with DYNAMIC_SAMPLE=${DYNAMIC_SAMPLE}." >&2; exit 1; }
+        echo "ERROR: USE_OPSD=true is incompatible with DYNAMIC_SAMPLE=${DYNAMIC_SAMPLE}." >&2; exit 1; }
     grep -q "class OPSDGRPOTrainer" swift/rlhf_trainers/opsd_grpo_trainer.py \
         || { echo "ERROR: swift/rlhf_trainers/opsd_grpo_trainer.py is missing. Refusing to start." >&2; exit 1; }
 fi
@@ -292,9 +301,9 @@ else
 fi
 
 echo "=============================================="
-echo " method:   GRPO   reward='${REWARD_FUNCS}'  weights='${REWARD_WEIGHTS}'"
-if [ "$USE_OPSD_GRPO" = "true" ]; then
-echo " branch:   OPSD+GRPO  NZG route on 'GroundAcc'  sft_beta ${NZG_BETA_PEAK}->${NZG_BETA_VALLEY}"
+echo " method:   $([ "$SCALE_REWARDS" = none ] && echo RLOO || echo "scale_rewards=$SCALE_REWARDS")   reward='${REWARD_FUNCS}'  weights='${REWARD_WEIGHTS}'"
+if [ "$USE_OPSD" = "true" ]; then
+echo " branch:   OPSD  NZG route on 'GroundAcc'  sft_beta ${NZG_BETA_PEAK}->${NZG_BETA_VALLEY}"
 echo "           (warmup ${NZG_WARMUP} decay ${NZG_DECAY}, all_rollouts=${NZG_ALL_ROLLOUTS})"
 fi
 echo " group:    G=${NUM_GEN}  bs=${BS} gas=${GAS} -> $((BS * NPROC * GAS)) completions"
@@ -342,6 +351,7 @@ for g in ${GPU_ROLLOUT} ${GPUS_TRAINER//,/ }; do
 done
 
 # ---- rollout server: 1 GPU ------------------------------------------------
+set -m   # run the rollout server in its own process group
 # --vllm_enforce_eager true is REQUIRED (header, CORRECTNESS item 1).
 CUDA_VISIBLE_DEVICES="${GPU_ROLLOUT}" \
 IMAGE_MAX_TOKEN_NUM=10000 \
@@ -354,12 +364,19 @@ $ENV/swift rollout \
     --vllm_data_parallel_size 1 \
     --vllm_enforce_eager true \
     --host 127.0.0.1 \
-    --port $PORT > "$LOGDIR/rollout-$run_name$LOGSUF.log" 2>&1 &
-ROLLOUT_PID=$!
+    --port $PORT > "$LOGDIR/rollout-$run_name$LOGSUF.log" 2>&1 < /dev/null &
+ROLLOUT_PID=$!   # process group id of the rollout server (set -m above)
+set +m
 # Kill by captured PID, never by pattern (a pattern kill can hit other users' processes);
 # remove only the view dir this job created.
-trap 'kill $ROLLOUT_PID 2>/dev/null || true' EXIT
-echo "rollout PID $ROLLOUT_PID -- to abort cleanly: scancel the srun step, or kill $ROLLOUT_PID plus the torchrun group. Never pkill."
+# On exit, stop the rollout server together with its child processes and wait for them.
+stop_rollout() {
+    kill -TERM -- -$ROLLOUT_PID 2>/dev/null || return 0
+    for _ in $(seq 1 60); do kill -0 -- -$ROLLOUT_PID 2>/dev/null || return 0; sleep 1; done
+    kill -KILL -- -$ROLLOUT_PID 2>/dev/null || true
+}
+trap stop_rollout EXIT
+echo "rollout PID $ROLLOUT_PID -- to abort cleanly: scancel the srun step, or kill -- -$ROLLOUT_PID (its process group) plus the torchrun group. Never pkill."
 
 echo "waiting for rollout server on :$PORT ..."
 for i in $(seq 1 60); do
