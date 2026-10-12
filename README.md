@@ -28,9 +28,9 @@
 
 ## 📖 Overview
 
-**ScreenRef is the core contribution of GroundGUI:** a high-quality GUI grounding dataset spanning **desktop, web, and mobile** environments. It pairs diverse screenshots with referring expressions and localization annotations, covering text recognition, visual matching, spatial understanding, and refusal.
+**ScreenRef** and **Distillation-to-Reinforcement Learning (D2RL)** are the core contributions of **GroundGUI**. ScreenRef is a high-quality GUI grounding dataset spanning **desktop, web, and mobile** environments. It pairs diverse screenshots with referring expressions and localization annotations, covering text recognition, visual matching, spatial understanding, and refusal.
 
-Building on ScreenRef, we train **GroundGUI-8B** from **Qwen3-VL-8B-Instruct** with supervised fine-tuning and **Distillation-to-Reinforcement Learning (D2RL)**, improving precise localization in complex interfaces.
+Building on ScreenRef, we train **GroundGUI-8B** from **Qwen3-VL-8B-Instruct** with supervised fine-tuning and **D2RL**, improving precise localization in complex interfaces.
 
 ### Key Features
 
