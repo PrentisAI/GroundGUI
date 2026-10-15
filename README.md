@@ -6,9 +6,10 @@
   <a href="https://huggingface.co/datasets/PrentisAI/ScreenRef"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-ScreenRef-0D9488?style=flat-square" alt="Hugging Face Dataset: ScreenRef"></a>
   <a href="https://huggingface.co/PrentisAI/GroundGUI-8B"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-GroundGUI--8B-2563EB?style=flat-square" alt="Hugging Face Model: GroundGUI-8B"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Code%20License-Apache%202.0-64748B?style=flat-square" alt="Code license: Apache 2.0"></a>
+  <a href="https://arxiv.org/abs/2610.19100"><img src="https://img.shields.io/badge/arXiv-2610.19100-B31B1B?style=flat-square" alt="arXiv Paper"></a>
 </p>
 
-<p><strong>Paper:</strong> arXiv link pending.</p>
+
 
 <p>
   <a href="#overview">Overview</a> ·
