@@ -264,7 +264,20 @@ The code is licensed under [**Apache-2.0**](./LICENSE), except where noted in [N
 
 ## 📚 Citation
 
-The paper is titled **GroundGUI: GUI Grounding by High-Quality Data and Distillation-to-Reinforcement Learning**. The arXiv link and BibTeX entry will be added when the preprint is available.
+If you find GroundGUI or ScreenRef useful, please cite our [paper](https://arxiv.org/abs/2610.19100):
+
+```bibtex
+@misc{xie2026groundguiguigroundinghighquality,
+      title={GroundGUI: GUI Grounding by High-Quality Data and Distillation-to-Reinforcement Learning},
+      author={Qingsong Xie and Jiahao Tian and Jiacheng Tang and Zhifeng Li and Madalina Ciobanu and Navan Preet Singh and Qingqing Mao and Ritankar Das},
+      year={2026},
+      eprint={2610.19100},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.19100},
+}
+```
+
 
 ---
 
